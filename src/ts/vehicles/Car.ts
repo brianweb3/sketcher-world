@@ -20,6 +20,8 @@ export class Car extends Vehicle implements IControllable
 
 	// private wheelsDebug: THREE.Mesh[] = [];
 	private steeringWheel: THREE.Object3D;
+	private bodyObject: THREE.Object3D;
+	private hoodLogo: THREE.Mesh;
 	private airSpinTimer: number = 0;
 
 	private steeringSimulator: SpringSimulator;
@@ -45,7 +47,9 @@ export class Car extends Vehicle implements IControllable
 			rollInfluence: 0.8
 		});
 
+		this.applyCarPaint();
 		this.readCarData(gltf);
+		this.addPumpLogoToHood();
 
 		this.collision.preStep = (body: CANNON.Body) => { this.physicsPreStep(body, this); };
 
@@ -330,6 +334,11 @@ export class Car extends Vehicle implements IControllable
 	public readCarData(gltf: any): void
 	{
 		gltf.scene.traverse((child: THREE.Object3D) => {
+			if (child.name === 'body')
+			{
+				this.bodyObject = child;
+			}
+
 			if (child.hasOwnProperty('userData'))
 			{
 				if (child.userData.hasOwnProperty('data'))
@@ -341,5 +350,75 @@ export class Car extends Vehicle implements IControllable
 				}
 			}
 		});
+	}
+
+	private applyCarPaint(): void
+	{
+		const vehicleColor = new THREE.Color(0x368060);
+		const wheelColor = new THREE.Color(0x000000);
+
+		this.materials.forEach((material: THREE.Material & { color?: THREE.Color; name?: string; transparent?: boolean }) =>
+		{
+			const materialName = (material.name || '').toLowerCase();
+			if (material.color === undefined) return;
+
+			if (materialName === 'wheel')
+			{
+				material.color.copy(wheelColor);
+				material.needsUpdate = true;
+				return;
+			}
+
+			if (material.transparent === true) return;
+
+			material.color.copy(vehicleColor);
+			material.needsUpdate = true;
+		});
+	}
+
+	private addPumpLogoToHood(): void
+	{
+		const body = this.bodyObject || this.getObjectByName('body');
+		if (!body) return;
+
+		body.updateWorldMatrix(true, true);
+
+		const bounds = new THREE.Box3().setFromObject(body);
+		const size = new THREE.Vector3();
+		const center = new THREE.Vector3();
+		bounds.getSize(size);
+		bounds.getCenter(center);
+
+		const hoodWorldPosition = new THREE.Vector3(
+			center.x,
+			bounds.min.y + size.y * 0.44,
+			bounds.max.z - size.z * 0.22
+		);
+		const hoodLocalPosition = body.worldToLocal(hoodWorldPosition.clone());
+
+		const logoTexture = new THREE.TextureLoader().load('build/assets/sketcher-pump-logo.svg');
+		logoTexture.anisotropy = 4;
+
+		const logoMaterial = new THREE.MeshBasicMaterial({
+			map: logoTexture,
+			transparent: true,
+			side: THREE.DoubleSide,
+			depthWrite: false,
+			polygonOffset: true,
+			polygonOffsetFactor: -2,
+			polygonOffsetUnits: -2
+		});
+
+		const logoSize = Math.max(0.34, size.x * 0.32);
+		this.hoodLogo = new THREE.Mesh(new THREE.PlaneGeometry(logoSize, logoSize), logoMaterial);
+		this.hoodLogo.name = 'pumpfun-hood-logo';
+		this.hoodLogo.rotation.x = -Math.PI / 2;
+		this.hoodLogo.position.copy(hoodLocalPosition);
+		this.hoodLogo.position.y += 0.002;
+		this.hoodLogo.renderOrder = 12;
+		this.hoodLogo.castShadow = false;
+		this.hoodLogo.receiveShadow = false;
+
+		body.add(this.hoodLogo);
 	}
 }

@@ -65,6 +65,32 @@ export class World
 	public updatables: IUpdatable[] = [];
 
 	private lastScenarioID: string;
+	private musicEnabled: boolean = true;
+	private musicInitialized: boolean = false;
+	private ambientMusic: HTMLAudioElement;
+	private readonly musicTrackPath: string = 'build/assets/golden-dust.mp3';
+	private readonly musicVolume: number = 0.16;
+	private readonly coinPickupSoundPath: string = 'build/assets/coin-pickup.mp3';
+	private coinPickupSound: HTMLAudioElement;
+	private coinsCounterEl: HTMLElement;
+	private impactCounterEl: HTMLElement;
+	private buybackCounterEl: HTMLElement;
+	private walletAddressEl: HTMLAnchorElement;
+	private walletBalanceEl: HTMLElement;
+	private buybackListEl: HTMLElement;
+	private buybackHistoryLoading: boolean = false;
+	private coinTemplate: THREE.Object3D;
+	private activeCoins: THREE.Object3D[] = [];
+	private pendingCoinSpawn: boolean = false;
+	private coinsCollected: number = 0;
+	private coinsSpawned: number = 0;
+	private economyImpactPoints: number = 0;
+	private walletBalanceSol: number = 0;
+	private plannedBuybackSol: number = 0;
+	private readonly buybackWalletAddress: string = '62RdwFeNALkAMy9eKxPACDXToTYBfbPfDfShQaHfK6Xi';
+	private readonly heliusRpcUrl: string = 'https://mainnet.helius-rpc.com/?api-key=27b24668-8830-44fc-be8b-ed1046c1631c';
+	private readonly totalCoinsToSpawn: number = 160;
+	private readonly coinCollectDistance: number = 1.65;
 
 	constructor(worldScenePath?: any)
 	{
@@ -160,13 +186,44 @@ export class World
 			{
 				this.update(1, 1);
 				this.setTimeScale(1);
-	
+
 				Swal.fire({
-					title: 'Welcome to Sketchbook!',
-					text: 'Feel free to explore the world and interact with available vehicles. There are also various scenarios ready to launch from the right panel.',
-					footer: '<a href="https://github.com/swift502/Sketchbook" target="_blank">GitHub page</a><a href="https://discord.gg/fGuEqCe" target="_blank">Discord server</a>',
+					title: 'Welcome to Sketcher World',
+					html: `You are now inside a living prototype.<br>
+Move freely, test the physics, drive vehicles, fly machines, and reshape the space around you.<br>
+Everything here is unfinished by design.<br>
+Every action leaves a trace.<br>
+Every scenario is a draft waiting to be explored.<br>
+Launch experiments from the right panel.<br>
+And become part of the sketch.`,
+					customClass: {
+						title: 'sketcher-welcome-title',
+					},
 					confirmButtonText: 'Okay',
 					buttonsStyling: false,
+					onOpen: () => {
+						const actions = document.querySelector('.swal2-actions');
+						if (actions)
+						{
+							const xButton = document.createElement('a');
+							xButton.className = 'sketcher-link-button sketcher-x-button';
+							xButton.href = 'https://x.com/thesketcherwrld';
+							xButton.target = '_blank';
+							xButton.rel = 'noopener noreferrer';
+							xButton.title = 'Sketcher World on X';
+							xButton.innerHTML = '<img src="build/assets/sketcher-x-logo.svg" alt="Sketcher World X">';
+							actions.appendChild(xButton);
+
+							const pumpButton = document.createElement('a');
+							pumpButton.className = 'sketcher-link-button sketcher-pump-button';
+							pumpButton.href = 'https://pump.fun/coin/HGKzAj6tBfWoYHuqh2Yugg7tpdjj7iU38sV372Q5pump';
+							pumpButton.target = '_blank';
+							pumpButton.rel = 'noopener noreferrer';
+							pumpButton.title = 'Sketcher World on pump.fun';
+							pumpButton.innerHTML = '<img src="build/assets/sketcher-pump-logo.svg" alt="Sketcher World pump.fun">';
+							actions.appendChild(pumpButton);
+						}
+					},
 					onClose: () => {
 						UIManager.setUserInterfaceVisible(true);
 					}
@@ -198,6 +255,7 @@ export class World
 	public update(timeStep: number, unscaledTimeStep: number): void
 	{
 		this.updatePhysics(timeStep);
+		this.updateCoins(unscaledTimeStep);
 
 		// Update registred objects
 		this.updatables.forEach((entity) => {
@@ -331,6 +389,13 @@ export class World
 
 	public loadScene(loadingManager: LoadingManager, gltf: any): void
 	{
+		loadingManager.loadGLTF('build/assets/coin.glb', (coinModel) =>
+		{
+			this.coinTemplate = coinModel.scene;
+			this.prepareCoinTemplate(this.coinTemplate);
+			this.trySpawnCoins();
+		});
+
 		gltf.scene.traverse((child) => {
 			if (child.hasOwnProperty('userData'))
 			{
@@ -380,6 +445,11 @@ export class World
 						this.paths.push(new Path(child));
 					}
 
+					if (child.userData.data === 'spawn')
+					{
+						child.visible = false;
+					}
+
 					if (child.userData.data === 'scenario')
 					{
 						this.scenarios.push(new Scenario(child, this));
@@ -406,6 +476,9 @@ export class World
 		this.lastScenarioID = scenarioID;
 
 		this.clearEntities();
+		this.clearCoinsFromWorld();
+		this.resetCoinEconomy();
+		this.pendingCoinSpawn = true;
 
 		// Launch default scenario
 		if (!loadingManager) loadingManager = new LoadingManager(this);
@@ -414,6 +487,8 @@ export class World
 				scenario.launch(loadingManager, this);
 			}
 		}
+
+		this.trySpawnCoins();
 	}
 
 	public restartScenario(): void
@@ -490,7 +565,7 @@ export class World
 		// Loader
 		$(`	<div id="loading-screen">
 				<div id="loading-screen-background"></div>
-				<h1 id="main-title" class="sb-font">Sketchbook 0.4</h1>
+				<h1 id="main-title" class="sb-font">PumpFun Sketcher</h1>
 				<div class="cubeWrap">
 					<div class="cube">
 						<div class="faces1"></div>
@@ -503,26 +578,575 @@ export class World
 
 		// UI
 		$(`	<div id="ui-container" style="display: none;">
-				<div class="github-corner">
-					<a href="https://github.com/swift502/Sketchbook" target="_blank" title="Fork me on GitHub">
-						<svg viewbox="0 0 100 100" fill="currentColor">
-							<title>Fork me on GitHub</title>
-							<path d="M0 0v100h100V0H0zm60 70.2h.2c1 2.7.3 4.7 0 5.2 1.4 1.4 2 3 2 5.2 0 7.4-4.4 9-8.7 9.5.7.7 1.3 2
-							1.3 3.7V99c0 .5 1.4 1 1.4 1H44s1.2-.5 1.2-1v-3.8c-3.5 1.4-5.2-.8-5.2-.8-1.5-2-3-2-3-2-2-.5-.2-1-.2-1
-							2-.7 3.5.8 3.5.8 2 1.7 4 1 5 .3.2-1.2.7-2 1.2-2.4-4.3-.4-8.8-2-8.8-9.4 0-2 .7-4 2-5.2-.2-.5-1-2.5.2-5
-							0 0 1.5-.6 5.2 1.8 1.5-.4 3.2-.6 4.8-.6 1.6 0 3.3.2 4.8.7 2.8-2 4.4-2 5-2z"></path>
-						</svg>
-					</a>
+				<div class="top-left-hud">
+					<div class="top-left-actions">
+						<a class="hud-link hud-link-pump" href="https://pump.fun/coin/HGKzAj6tBfWoYHuqh2Yugg7tpdjj7iU38sV372Q5pump" target="_blank" rel="noopener noreferrer" title="PumpFun">
+							<img src="build/assets/sketcher-pump-logo.svg" alt="PumpFun">
+						</a>
+						<a class="hud-link hud-link-x" href="https://x.com/thesketcherwrld" target="_blank" rel="noopener noreferrer" title="X">
+							<img src="build/assets/sketcher-x-logo.svg" alt="X">
+						</a>
+						<button id="copy-ca-button" class="hud-copy-ca" type="button">COPY CA</button>
+						<button id="music-toggle-button" class="hud-copy-ca hud-music-toggle" type="button">MUSIC ON</button>
+					</div>
+					<div class="token-stats-panel">
+						<h3 class="token-stats-title">Impact Engine</h3>
+						<div class="token-stats-row">
+							<span>Coins</span>
+							<strong id="coins-counter">0 / 0</strong>
+						</div>
+						<div class="token-stats-row">
+							<span>Total On Map</span>
+							<strong id="total-coins-counter">160</strong>
+						</div>
+						<div class="token-stats-row">
+							<span>Impact Points</span>
+							<strong id="impact-counter">0</strong>
+						</div>
+						<div class="token-stats-row">
+							<span>Wallet</span>
+							<a id="wallet-address" href="#" target="_blank" rel="noopener noreferrer">-</a>
+						</div>
+						<div class="token-stats-row">
+							<span>Balance (SOL)</span>
+							<strong id="wallet-balance">0.0000</strong>
+						</div>
+						<div class="token-stats-row">
+							<span>Planned Buyback</span>
+							<strong id="buyback-counter">0 SOL</strong>
+						</div>
+						<p class="token-stats-note">Collect 40 coins to trigger 1 SOL buyback from the wallet. Total on map: 160.</p>
+					</div>
+					<div class="buyback-history-panel">
+						<h3 class="token-stats-title">Buybacks</h3>
+						<div id="buyback-list" class="buyback-list">
+							<div class="buyback-empty">Loading buybacks...</div>
+						</div>
+					</div>
 				</div>
 				<div class="left-panel">
 					<div id="controls" class="panel-segment flex-bottom"></div>
 				</div>
+				<div id="coin-toast-container"></div>
 			</div>
 		`).appendTo('body');
+
+		const contractAddress = 'HGKzAj6tBfWoYHuqh2Yugg7tpdjj7iU38sV372Q5pump';
+		const copyButton = document.getElementById('copy-ca-button') as HTMLButtonElement;
+
+		if (copyButton)
+		{
+			const showCopiedState = () =>
+			{
+				const originalText = copyButton.textContent || 'COPY CA';
+				copyButton.textContent = 'COPIED';
+				setTimeout(() => {
+					copyButton.textContent = originalText;
+				}, 1200);
+			};
+
+			const fallbackCopy = () =>
+			{
+				const textArea = document.createElement('textarea');
+				textArea.value = contractAddress;
+				textArea.style.position = 'fixed';
+				textArea.style.opacity = '0';
+				document.body.appendChild(textArea);
+				textArea.focus();
+				textArea.select();
+				document.execCommand('copy');
+				document.body.removeChild(textArea);
+				showCopiedState();
+			};
+
+			copyButton.addEventListener('click', () =>
+			{
+				const clipboard = (navigator as any).clipboard;
+
+				if (clipboard && window.isSecureContext)
+				{
+					clipboard.writeText(contractAddress)
+						.then(() => showCopiedState())
+						.catch(() => fallbackCopy());
+				}
+				else
+				{
+					fallbackCopy();
+				}
+			});
+		}
+
+		this.coinsCounterEl = document.getElementById('coins-counter');
+		this.impactCounterEl = document.getElementById('impact-counter');
+		this.buybackCounterEl = document.getElementById('buyback-counter');
+		this.walletAddressEl = document.getElementById('wallet-address') as HTMLAnchorElement;
+		this.walletBalanceEl = document.getElementById('wallet-balance');
+		this.buybackListEl = document.getElementById('buyback-list');
+		this.refreshEconomyPanel();
+		this.initializeWalletTracking();
+		this.initializeCoinPickupSound();
+		this.initializeMusicToggle();
+		this.syncImpactPanelWidth();
+		window.addEventListener('resize', () => this.syncImpactPanelWidth());
 
 		// Canvas
 		document.body.appendChild(this.renderer.domElement);
 		this.renderer.domElement.id = 'canvas';
+	}
+
+	private initializeMusicToggle(): void
+	{
+		const musicButton = document.getElementById('music-toggle-button') as HTMLButtonElement;
+		if (!musicButton) return;
+
+		const refreshMusicButton = () =>
+		{
+			musicButton.textContent = this.musicEnabled ? 'MUSIC ON' : 'MUSIC OFF';
+			musicButton.classList.toggle('is-off', !this.musicEnabled);
+		};
+
+		const unlockAndStart = () =>
+		{
+			if (this.musicEnabled) this.startAmbientMusic();
+		};
+
+		refreshMusicButton();
+
+		window.addEventListener('pointerdown', unlockAndStart, { once: true });
+		window.addEventListener('keydown', unlockAndStart, { once: true });
+
+		musicButton.addEventListener('click', () =>
+		{
+			this.musicEnabled = !this.musicEnabled;
+			if (this.musicEnabled)
+			{
+				this.startAmbientMusic();
+			}
+			else
+			{
+				if (this.ambientMusic)
+				{
+					this.setMusicVolume(0);
+					this.ambientMusic.pause();
+				}
+			}
+			refreshMusicButton();
+		});
+	}
+
+	private startAmbientMusic(): void
+	{
+		if (!this.musicInitialized)
+		{
+			this.ambientMusic = new Audio(this.musicTrackPath);
+			this.ambientMusic.preload = 'auto';
+			this.ambientMusic.loop = true;
+			this.ambientMusic.volume = 0;
+
+			// Fallback for environments where loop may be ignored.
+			this.ambientMusic.addEventListener('ended', () =>
+			{
+				if (this.musicEnabled)
+				{
+					this.ambientMusic.currentTime = 0;
+					this.ambientMusic.play().catch(() => undefined);
+				}
+			});
+
+			this.musicInitialized = true;
+		}
+
+		if (!this.musicEnabled) return;
+
+		this.setMusicVolume(this.musicVolume);
+		this.ambientMusic.play().catch(() => undefined);
+	}
+
+	private initializeCoinPickupSound(): void
+	{
+		this.coinPickupSound = new Audio(this.coinPickupSoundPath);
+		this.coinPickupSound.preload = 'auto';
+		this.coinPickupSound.volume = 0.7;
+	}
+
+	private playCoinPickupSound(): void
+	{
+		const baseSound = this.coinPickupSound;
+		if (!baseSound) return;
+
+		const sfx = baseSound.cloneNode(true) as HTMLAudioElement;
+		sfx.volume = baseSound.volume;
+		sfx.currentTime = 0;
+
+		sfx.play().catch(() => undefined);
+		window.setTimeout(() =>
+		{
+			sfx.pause();
+			sfx.currentTime = 0;
+		}, 1000);
+	}
+
+	private setMusicVolume(target: number): void
+	{
+		if (!this.ambientMusic) return;
+		this.ambientMusic.volume = THREE.MathUtils.clamp(target, 0, 1);
+	}
+
+	private prepareCoinTemplate(template: THREE.Object3D): void
+	{
+		template.traverse((child: any) =>
+		{
+			if (child.type === 'Mesh')
+			{
+				// Keep source GLB look exactly as provided.
+				child.castShadow = true;
+				child.receiveShadow = true;
+			}
+		});
+
+		const bounds = new THREE.Box3().setFromObject(template);
+		const size = new THREE.Vector3();
+		bounds.getSize(size);
+		const maxSide = Math.max(size.x, size.y, size.z, 0.001);
+		template.scale.setScalar(0.9 / maxSide);
+	}
+
+	private clearCoinsFromWorld(): void
+	{
+		this.activeCoins.forEach((coin) => {
+			this.graphicsWorld.remove(coin);
+		});
+		this.activeCoins = [];
+		this.coinsSpawned = 0;
+	}
+
+	private resetCoinEconomy(): void
+	{
+		this.coinsCollected = 0;
+		this.economyImpactPoints = 0;
+		this.plannedBuybackSol = 0;
+		this.refreshEconomyPanel();
+	}
+
+	private trySpawnCoins(): void
+	{
+		if (!this.pendingCoinSpawn) return;
+		if (!this.coinTemplate) return;
+
+		this.pendingCoinSpawn = false;
+		this.spawnCoinsAcrossMap();
+	}
+
+	private spawnCoinsAcrossMap(): void
+	{
+		if (!this.coinTemplate || this.activeCoins.length > 0) return;
+
+		const minX = -205;
+		const maxX = 205;
+		const minZ = -160;
+		const maxZ = 145;
+		const maxAttempts = this.totalCoinsToSpawn * 60;
+
+		let spawned = 0;
+		for (let attempt = 0; attempt < maxAttempts && spawned < this.totalCoinsToSpawn; attempt++)
+		{
+			const x = THREE.MathUtils.randFloat(minX, maxX);
+			const z = THREE.MathUtils.randFloat(minZ, maxZ);
+			const groundY = this.getGroundHeightAt(x, z);
+
+			if (!Number.isFinite(groundY)) continue;
+			if (groundY < 0.15 || groundY > 120) continue;
+
+			const coin = this.coinTemplate.clone(true);
+			const phase = Math.random() * Math.PI * 2;
+			const baseY = groundY + 0.8;
+
+			coin.position.set(x, baseY, z);
+			coin.userData.coinBaseY = baseY;
+			coin.userData.coinFloatPhase = phase;
+			coin.userData.coinSpin = 1.5 + Math.random() * 1.2;
+
+			this.graphicsWorld.add(coin);
+			this.activeCoins.push(coin);
+			spawned++;
+		}
+
+		this.coinsSpawned = spawned;
+		this.refreshEconomyPanel();
+	}
+
+	private getGroundHeightAt(x: number, z: number): number
+	{
+		const from = new CANNON.Vec3(x, 260, z);
+		const to = new CANNON.Vec3(x, -30, z);
+		const rayResult = new CANNON.RaycastResult();
+		const hit = this.physicsWorld.raycastClosest(from, to, { skipBackfaces: true }, rayResult);
+
+		if (!hit) return NaN;
+		return rayResult.hitPointWorld.y;
+	}
+
+	private updateCoins(unscaledTimeStep: number): void
+	{
+		this.trySpawnCoins();
+		if (this.activeCoins.length === 0 || this.characters.length === 0) return;
+
+		const collectDistanceSquared = this.coinCollectDistance * this.coinCollectDistance;
+		const elapsed = this.clock.elapsedTime;
+		const characterPositions: THREE.Vector3[] = [];
+
+		this.characters.forEach((character) =>
+		{
+			characterPositions.push(Utils.threeVector(character.characterCapsule.body.position));
+		});
+
+		for (let i = this.activeCoins.length - 1; i >= 0; i--)
+		{
+			const coin = this.activeCoins[i];
+			const baseY = coin.userData.coinBaseY || coin.position.y;
+			const phase = coin.userData.coinFloatPhase || 0;
+			const spin = coin.userData.coinSpin || 2;
+
+			coin.rotation.y += unscaledTimeStep * spin;
+			coin.position.y = baseY + Math.sin((elapsed * 2.2) + phase) * 0.13;
+
+			let isCollected = false;
+			for (let j = 0; j < characterPositions.length; j++)
+			{
+				if (coin.position.distanceToSquared(characterPositions[j]) <= collectDistanceSquared)
+				{
+					isCollected = true;
+					break;
+				}
+			}
+
+			if (isCollected)
+			{
+				this.collectCoin(i);
+			}
+		}
+	}
+
+	private collectCoin(index: number): void
+	{
+		const coin = this.activeCoins[index];
+		this.graphicsWorld.remove(coin);
+		this.activeCoins.splice(index, 1);
+		this.playCoinPickupSound();
+
+		this.coinsCollected++;
+		this.economyImpactPoints = this.coinsCollected * 125;
+		this.plannedBuybackSol = Math.floor(this.coinsCollected / 40);
+		this.showCoinToast();
+		this.refreshEconomyPanel();
+	}
+
+	private showCoinToast(): void
+	{
+		const container = document.getElementById('coin-toast-container');
+		if (!container) return;
+
+		const remainingForBuyback = (40 - (this.coinsCollected % 40)) % 40;
+		const secondaryText = remainingForBuyback === 0
+			? 'Buyback ready: +1 SOL'
+			: `${remainingForBuyback} coins left for buyback`;
+
+		const toast = document.createElement('div');
+		toast.className = 'coin-toast';
+		toast.innerHTML = `<strong>+1 coin collected</strong><span>${secondaryText}</span>`;
+
+		container.appendChild(toast);
+		window.setTimeout(() => toast.classList.add('coin-toast-hide'), 1700);
+		window.setTimeout(() => {
+			if (toast.parentElement === container) container.removeChild(toast);
+		}, 2300);
+	}
+
+	private refreshEconomyPanel(): void
+	{
+		if (this.coinsCounterEl)
+		{
+			this.coinsCounterEl.textContent = `${this.coinsCollected.toLocaleString('en-US')} / ${this.coinsSpawned.toLocaleString('en-US')}`;
+		}
+
+		if (this.impactCounterEl)
+		{
+			this.impactCounterEl.textContent = this.economyImpactPoints.toLocaleString('en-US');
+		}
+
+		if (this.buybackCounterEl)
+		{
+			this.buybackCounterEl.textContent = `${this.plannedBuybackSol.toLocaleString('en-US')} SOL`;
+		}
+
+		if (this.walletAddressEl)
+		{
+			this.walletAddressEl.textContent = this.buybackWalletAddress;
+			this.walletAddressEl.href = `https://solscan.io/account/${this.buybackWalletAddress}`;
+		}
+
+		if (this.walletBalanceEl)
+		{
+			this.walletBalanceEl.textContent = this.walletBalanceSol.toLocaleString('en-US', {
+				minimumFractionDigits: 4,
+				maximumFractionDigits: 4
+			});
+		}
+	}
+
+	private initializeWalletTracking(): void
+	{
+		this.refreshEconomyPanel();
+		this.refreshWalletBalance();
+		this.refreshBuybackHistory();
+		window.setInterval(() => this.refreshWalletBalance(), 20000);
+		window.setInterval(() => this.refreshBuybackHistory(), 30000);
+	}
+
+	private refreshWalletBalance(): void
+	{
+		const payload = {
+			jsonrpc: '2.0',
+			id: 1,
+			method: 'getBalance',
+			params: [this.buybackWalletAddress]
+		};
+
+		fetch(this.heliusRpcUrl, {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json'
+			},
+			body: JSON.stringify(payload)
+		})
+		.then((response) => response.json())
+		.then((result) =>
+		{
+			const lamports = result && result.result ? result.result.value : undefined;
+			if (typeof lamports === 'number')
+			{
+				this.walletBalanceSol = lamports / 1000000000;
+				this.refreshEconomyPanel();
+			}
+		})
+		.catch(() => undefined);
+	}
+
+	private refreshBuybackHistory(): void
+	{
+		if (this.buybackHistoryLoading || !this.buybackListEl) return;
+		this.buybackHistoryLoading = true;
+
+		const signaturesPayload = {
+			jsonrpc: '2.0',
+			id: 2,
+			method: 'getSignaturesForAddress',
+			params: [this.buybackWalletAddress, { limit: 16 }]
+		};
+
+		fetch(this.heliusRpcUrl, {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json'
+			},
+			body: JSON.stringify(signaturesPayload)
+		})
+		.then((response) => response.json())
+		.then((result) =>
+		{
+			const signatures = (result && result.result) ? result.result : [];
+			const txSignatures = signatures
+				.map((entry) => entry && entry.signature ? entry.signature : '')
+				.filter((signature) => signature.length > 0)
+				.slice(0, 12);
+
+			return Promise.all(txSignatures.map((signature) =>
+			{
+				const txPayload = {
+					jsonrpc: '2.0',
+					id: 3,
+					method: 'getTransaction',
+					params: [signature, { encoding: 'jsonParsed', commitment: 'confirmed', maxSupportedTransactionVersion: 0 }]
+				};
+
+				return fetch(this.heliusRpcUrl, {
+					method: 'POST',
+					headers: {
+						'Content-Type': 'application/json'
+					},
+					body: JSON.stringify(txPayload)
+				})
+				.then((response) => response.json())
+				.then((txResult) =>
+				{
+					const tx = txResult ? txResult.result : undefined;
+					if (!tx || !tx.meta || !tx.transaction || !tx.transaction.message) return undefined;
+
+					const accountKeys = tx.transaction.message.accountKeys || [];
+					const walletIndex = accountKeys.findIndex((key) =>
+					{
+						if (typeof key === 'string') return key === this.buybackWalletAddress;
+						return key && key.pubkey === this.buybackWalletAddress;
+					});
+
+					if (walletIndex < 0) return undefined;
+
+					const preBalances = tx.meta.preBalances || [];
+					const postBalances = tx.meta.postBalances || [];
+					const preLamports = typeof preBalances[walletIndex] === 'number' ? preBalances[walletIndex] : 0;
+					const postLamports = typeof postBalances[walletIndex] === 'number' ? postBalances[walletIndex] : 0;
+					const outgoingLamports = preLamports - postLamports;
+					if (outgoingLamports <= 0) return undefined;
+
+					return {
+						signature,
+						amountSol: outgoingLamports / 1000000000
+					};
+				})
+				.catch(() => undefined);
+			}));
+		})
+		.then((items: any[]) =>
+		{
+			if (!this.buybackListEl) return;
+
+			const buybacks = (items || [])
+				.filter((item) => !!item && item.amountSol > 0.0005)
+				.slice(0, 6);
+
+			if (buybacks.length === 0)
+			{
+				this.buybackListEl.innerHTML = '<div class="buyback-empty">No buybacks yet.</div>';
+				return;
+			}
+
+			this.buybackListEl.innerHTML = buybacks.map((buyback) =>
+			{
+				const txShort = `${buyback.signature.slice(0, 6)}...${buyback.signature.slice(-6)}`;
+				const amount = buyback.amountSol.toFixed(4);
+				return `<a class="buyback-item" href="https://solscan.io/tx/${buyback.signature}" target="_blank" rel="noopener noreferrer"><span class="buyback-tx">TX ${txShort}</span><strong>${amount} SOL</strong></a>`;
+			}).join('');
+		})
+		.catch(() =>
+		{
+			if (this.buybackListEl) this.buybackListEl.innerHTML = '<div class="buyback-empty">Unable to load buybacks.</div>';
+		})
+		.finally(() =>
+		{
+			this.buybackHistoryLoading = false;
+		});
+	}
+
+	private syncImpactPanelWidth(): void
+	{
+		const actionsRow = document.querySelector('.top-left-actions') as HTMLElement;
+		const impactPanel = document.querySelector('.token-stats-panel') as HTMLElement;
+		const buybackPanel = document.querySelector('.buyback-history-panel') as HTMLElement;
+		if (!actionsRow || !impactPanel) return;
+
+		const width = Math.ceil((actionsRow.getBoundingClientRect().width + 90) * 3);
+		impactPanel.style.width = `${width}px`;
+		if (buybackPanel) buybackPanel.style.width = `${width}px`;
 	}
 
 	private createParamsGUI(scope: World): void
@@ -543,7 +1167,6 @@ export class World
 
 		// Scenario
 		this.scenarioGUIFolder = gui.addFolder('Scenarios');
-		this.scenarioGUIFolder.open();
 
 		// World
 		let worldFolder = gui.addFolder('World');
@@ -616,6 +1239,9 @@ export class World
 				UIManager.setFPSVisible(enabled);
 			});
 
+		this.scenarioGUIFolder.close();
+		worldFolder.close();
+		settingsFolder.close();
 		gui.open();
 	}
 }

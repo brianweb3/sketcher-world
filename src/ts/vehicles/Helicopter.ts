@@ -19,6 +19,7 @@ export class Helicopter extends Vehicle implements IControllable, IWorldEntity
 	{
 		super(gltf);
 
+		this.applyHelicopterPaint();
 		this.readHelicopterData(gltf);
 
 		this.collision.preStep = (body: CANNON.Body) => { this.physicsPreStep(body, this); };
@@ -36,6 +37,20 @@ export class Helicopter extends Vehicle implements IControllable, IWorldEntity
 			'seat_switch': new KeyBinding('KeyX'),
 			'view': new KeyBinding('KeyV'),
 		};
+	}
+
+	private applyHelicopterPaint(): void
+	{
+		const vehicleColor = new THREE.Color(0x368060);
+
+		this.materials.forEach((material: THREE.Material & { color?: THREE.Color; transparent?: boolean }) =>
+		{
+			if (material.color === undefined) return;
+			if (material.transparent === true) return;
+
+			material.color.copy(vehicleColor);
+			material.needsUpdate = true;
+		});
 	}
 
 	public noDirectionPressed(): boolean

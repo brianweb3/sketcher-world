@@ -79,7 +79,6 @@ export class Character extends THREE.Object3D implements IWorldEntity
 	public controlledObject: IControllable;
 	public occupyingSeat: VehicleSeat = null;
 	public vehicleEntryInstance: VehicleEntryInstance = null;
-	
 	private physicsEnabled: boolean = true;
 
 	constructor(gltf: any)
@@ -87,6 +86,7 @@ export class Character extends THREE.Object3D implements IWorldEntity
 		super();
 
 		this.readCharacterData(gltf);
+		this.applyCharacterPaint();
 		this.setAnimations(gltf.animations);
 
 		// The visuals group is centered for easy character tilting
@@ -271,6 +271,20 @@ export class Character extends THREE.Object3D implements IWorldEntity
 				{
 					this.materials.push(child.material);
 				}
+			}
+		});
+	}
+
+	private applyCharacterPaint(): void
+	{
+		const characterColor = new THREE.Color(0x5EC888);
+
+		this.materials.forEach((material: THREE.Material & { color?: THREE.Color }) =>
+		{
+			if (material.color !== undefined)
+			{
+				material.color.copy(characterColor);
+				material.needsUpdate = true;
 			}
 		});
 	}

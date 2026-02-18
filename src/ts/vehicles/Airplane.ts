@@ -39,6 +39,7 @@ export class Airplane extends Vehicle implements IControllable, IWorldEntity
 			chassisConnectionPointLocal: new CANNON.Vec3(),
 		});
 
+		this.applyAirplanePaint();
 		this.readAirplaneData(gltf);
 
 		this.collision.preStep = (body: CANNON.Body) => { this.physicsPreStep(body, this); };
@@ -62,6 +63,20 @@ export class Airplane extends Vehicle implements IControllable, IWorldEntity
 		this.aileronSimulator = new SpringSimulator(60, 5, 0.6);
 		this.elevatorSimulator = new SpringSimulator(60, 7, 0.6);
 		this.rudderSimulator = new SpringSimulator(60, 10, 0.6);
+	}
+
+	private applyAirplanePaint(): void
+	{
+		const vehicleColor = new THREE.Color(0x368060);
+
+		this.materials.forEach((material: THREE.Material & { color?: THREE.Color; transparent?: boolean }) =>
+		{
+			if (material.color === undefined) return;
+			if (material.transparent === true) return;
+
+			material.color.copy(vehicleColor);
+			material.needsUpdate = true;
+		});
 	}
 
 	public noDirectionPressed(): boolean

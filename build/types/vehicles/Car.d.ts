@@ -8,6 +8,8 @@ export declare class Car extends Vehicle implements IControllable {
     get speed(): number;
     private _speed;
     private steeringWheel;
+    private bodyObject;
+    private hoodLogo;
     private airSpinTimer;
     private steeringSimulator;
     private gear;
@@ -24,4 +26,6 @@ export declare class Car extends Vehicle implements IControllable {
     onInputChange(): void;
     inputReceiverInit(): void;
     readCarData(gltf: any): void;
+    private applyCarPaint;
+    private addPumpLogoToHood;
 }

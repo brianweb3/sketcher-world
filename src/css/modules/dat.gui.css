@@ -461,3 +461,400 @@
 .dg.ac .close-button.close-bottom {
     display: none;
 }
+
+/* Sketcher volumetric theme */
+
+.dg {
+    --gui-accent: #5ec888;
+    --gui-accent-dark: #368060;
+    --gui-panel-top: rgba(18, 29, 32, 0.95);
+    --gui-panel-bottom: rgba(8, 12, 14, 0.95);
+    --gui-row-top: rgba(33, 49, 54, 0.94);
+    --gui-row-bottom: rgba(19, 29, 33, 0.94);
+    --gui-border: rgba(139, 198, 170, 0.34);
+    --gui-text: #eaf7ef;
+    text-shadow: none;
+}
+
+.dg.a {
+    margin-top: 18px;
+    margin-right: 18px;
+    border-radius: 14px;
+    border: 1px solid var(--gui-border);
+    background: linear-gradient(180deg, var(--gui-panel-top), var(--gui-panel-bottom));
+    box-shadow:
+        0 20px 38px rgba(0, 0, 0, 0.38),
+        0 4px 14px rgba(0, 0, 0, 0.24),
+        inset 0 1px 0 rgba(255, 255, 255, 0.18),
+        inset 0 -1px 0 rgba(0, 0, 0, 0.45);
+}
+
+.dg.main .close-button {
+    border-top: 1px solid rgba(130, 189, 159, 0.25);
+    height: 30px;
+    line-height: 30px;
+    color: var(--gui-text);
+    background: linear-gradient(180deg, rgba(53, 74, 81, 0.95), rgba(25, 38, 42, 0.95));
+}
+
+.dg.main .close-button:hover {
+    background: linear-gradient(180deg, rgba(66, 92, 100, 0.95), rgba(32, 48, 53, 0.95));
+}
+
+.dg li.folder {
+    margin: 0;
+    padding: 0;
+}
+
+.dg li.title {
+    margin: 0;
+    padding-left: 42px;
+    height: 42px;
+    line-height: 42px;
+    border-bottom: 1px solid rgba(133, 187, 160, 0.28);
+    background: linear-gradient(180deg, rgba(37, 53, 59, 0.98), rgba(12, 18, 21, 0.98));
+    background-image: none;
+    color: var(--gui-text);
+    letter-spacing: 0.2px;
+    font-weight: 700;
+    text-shadow: 0 1px 0 rgba(0, 0, 0, 0.55);
+    position: relative;
+}
+
+.dg li.title::before {
+    content: '';
+    width: 0;
+    height: 0;
+    border-top: 6px solid transparent;
+    border-bottom: 6px solid transparent;
+    border-left: 7px solid #bde9cf;
+    position: absolute;
+    left: 18px;
+    top: 50%;
+    transform: translateY(-50%) rotate(90deg);
+    transition: transform 0.18s ease;
+}
+
+.dg li.folder.closed > ul > li.title::before {
+    transform: translateY(-50%) rotate(0deg);
+}
+
+.dg li.folder:not(.closed) > ul > li.title::before {
+    transform: translateY(-50%) rotate(90deg);
+}
+
+.dg li:not(.folder) {
+    margin: 5px 8px;
+    padding: 0 12px;
+    margin-left: 8px;
+    height: 37px;
+    line-height: 37px;
+    border-radius: 10px;
+    border: 1px solid rgba(116, 165, 142, 0.24);
+    background: linear-gradient(180deg, var(--gui-row-top), var(--gui-row-bottom));
+    box-shadow:
+        0 8px 16px rgba(0, 0, 0, 0.26),
+        inset 0 1px 0 rgba(255, 255, 255, 0.09),
+        inset 0 -1px 0 rgba(0, 0, 0, 0.35);
+}
+
+.dg .property-name {
+    color: var(--gui-text);
+    font-size: 84%;
+    font-weight: 600;
+}
+
+.dg .cr {
+    clear: both;
+    overflow: visible;
+}
+
+.dg .cr.boolean,
+.dg .cr.color,
+.dg .cr.function,
+.dg .cr.number,
+.dg .cr.string {
+    border-left: 0;
+}
+
+.dg .cr.function {
+    background: linear-gradient(180deg, #7ce0ab 0%, #5ec888 62%, #368060 100%);
+    border: 1px solid rgba(51, 122, 89, 0.85);
+    box-shadow:
+        0 5px 0 rgba(31, 79, 58, 0.95),
+        0 12px 22px rgba(0, 0, 0, 0.34),
+        inset 0 1px 0 rgba(255, 255, 255, 0.4);
+    transition: transform 0.12s ease, filter 0.12s ease, box-shadow 0.12s ease;
+}
+
+.dg .cr.function .property-name {
+    width: 100%;
+    text-align: center;
+    color: #082818;
+    text-shadow: 0 1px 0 rgba(255, 255, 255, 0.24);
+    font-weight: 700;
+}
+
+.dg .cr.function:hover {
+    transform: translateY(-1px);
+    filter: brightness(1.03);
+}
+
+.dg .cr.function:active {
+    transform: translateY(3px);
+    box-shadow:
+        0 1px 0 rgba(31, 79, 58, 0.95),
+        0 6px 12px rgba(0, 0, 0, 0.28),
+        inset 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+
+.dg .c input[type=text] {
+    margin-top: 6px;
+    height: 25px;
+    border-radius: 8px;
+    border: 1px solid rgba(130, 193, 160, 0.32);
+    background: linear-gradient(180deg, rgba(34, 48, 53, 0.95), rgba(18, 27, 30, 0.95));
+    color: #d8f5e5;
+    text-align: center;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.dg .c input[type=text]:hover {
+    background: linear-gradient(180deg, rgba(42, 59, 65, 0.96), rgba(20, 31, 35, 0.96));
+}
+
+.dg .c input[type=text]:focus {
+    border-color: rgba(121, 203, 159, 0.72);
+    box-shadow: 0 0 0 2px rgba(94, 200, 136, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.dg .c .slider {
+    margin-top: 6px;
+    height: 25px;
+    border-radius: 999px;
+    border: 1px solid rgba(121, 183, 152, 0.32);
+    background: linear-gradient(180deg, rgba(28, 40, 45, 0.96), rgba(14, 22, 26, 0.96));
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.55);
+}
+
+.dg .c .slider-fg {
+    border-radius: inherit;
+    background: linear-gradient(180deg, #77d6a2 0%, #5ec888 58%, #3d996d 100%);
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.3),
+        0 0 8px rgba(94, 200, 136, 0.32);
+}
+
+.dg .c .slider:hover {
+    background: linear-gradient(180deg, rgba(34, 48, 54, 0.96), rgba(19, 29, 33, 0.96));
+}
+
+.dg .c select {
+    margin-top: 6px;
+    height: 25px;
+    width: 100%;
+    border-radius: 8px;
+    border: 1px solid rgba(122, 186, 154, 0.34);
+    color: var(--gui-text);
+    padding: 0 24px 0 8px;
+    appearance: none;
+    background:
+        linear-gradient(45deg, transparent 50%, #bde9cf 50%),
+        linear-gradient(135deg, #bde9cf 50%, transparent 50%),
+        linear-gradient(180deg, rgba(34, 48, 53, 0.95), rgba(18, 27, 30, 0.95));
+    background-position:
+        calc(100% - 13px) calc(50% - 2px),
+        calc(100% - 8px) calc(50% - 2px),
+        0 0;
+    background-size: 5px 5px, 5px 5px, 100% 100%;
+    background-repeat: no-repeat;
+}
+
+.dg .c input[type=checkbox] {
+    width: 18px;
+    height: 18px;
+    margin-top: 9px;
+    appearance: none;
+    border-radius: 5px;
+    border: 1px solid rgba(122, 188, 154, 0.45);
+    background: linear-gradient(180deg, rgba(37, 52, 58, 0.98), rgba(15, 23, 27, 0.98));
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    cursor: pointer;
+    position: relative;
+}
+
+.dg .c input[type=checkbox]:checked {
+    background: linear-gradient(180deg, #73dca4 0%, #5ec888 60%, #3f9d70 100%);
+    border-color: rgba(67, 136, 97, 0.95);
+}
+
+.dg .c input[type=checkbox]:checked::after {
+    content: '';
+    position: absolute;
+    left: 5px;
+    top: 1px;
+    width: 4px;
+    height: 9px;
+    border: solid #10311f;
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+}
+
+/* Top folders spacing + green headers */
+
+.dg.main > ul {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    padding: 10px 12px 12px;
+    box-sizing: border-box;
+}
+
+.dg.main > ul > li.folder {
+    margin: 0 !important;
+}
+
+.dg.main > ul > li.folder > ul > li.title {
+    margin: 0 !important;
+    padding-left: 26px;
+    border-radius: 12px;
+    border: 1px solid rgba(51, 122, 89, 0.85);
+    border-bottom-color: rgba(51, 122, 89, 0.85);
+    background: linear-gradient(180deg, #7ce0ab 0%, #5ec888 62%, #368060 100%);
+    color: #0a2919;
+    text-shadow: 0 1px 0 rgba(255, 255, 255, 0.28);
+    box-shadow:
+        0 5px 0 rgba(31, 79, 58, 0.95),
+        0 12px 22px rgba(0, 0, 0, 0.34),
+        inset 0 1px 0 rgba(255, 255, 255, 0.38);
+    position: relative;
+}
+
+.dg.main > ul > li.folder > ul > li.title::before {
+    display: none;
+    left: 18px;
+    border-left-color: #0f3b25;
+}
+
+.dg .closed li.title,
+.dg li.title {
+    background-image: none;
+}
+
+/* Equal spacing between scenario buttons when expanded */
+
+.dg.main > ul > li.folder:not(.closed) > ul {
+    padding: 10px 2px 4px;
+}
+
+.dg.main > ul > li.folder:not(.closed) > ul > li:not(.folder) {
+    margin-top: 0;
+    margin-bottom: 8px;
+}
+
+.dg.main > ul > li.folder:not(.closed) > ul > li:not(.folder):last-child {
+    margin-bottom: 0;
+}
+
+/* Closed folder rows must not keep margins, otherwise top-level spacing breaks */
+
+.dg.main > ul > li.folder.closed > ul > li:not(.folder) {
+    margin: 0 !important;
+    padding: 0 !important;
+}
+
+.dg.main > ul > li.folder.closed > ul > li:not(.title) {
+    display: none !important;
+}
+
+/* Force-remove all dat.gui folder arrows */
+.dg li.title {
+    background-image: none !important;
+    padding-left: 26px !important;
+}
+
+.dg .closed li.title {
+    background-image: none !important;
+}
+
+.dg li.title::before,
+.dg li.title::after {
+    content: none !important;
+    display: none !important;
+}
+
+/* Full panel rebuild: stable spacing for Scenarios / World / Settings */
+
+#dat-gui-container .dg.main.a {
+    width: 372px !important;
+    margin-top: 12px !important;
+    margin-right: 12px !important;
+    border-radius: 20px !important;
+    transform: scale(0.9) !important;
+    transform-origin: top right !important;
+    border: 1px solid rgba(72, 124, 108, 0.95) !important;
+    background: linear-gradient(165deg, rgba(23, 38, 42, 0.96), rgba(7, 11, 14, 0.96)) !important;
+    box-shadow:
+        0 20px 40px rgba(0, 0, 0, 0.42),
+        inset 0 1px 0 rgba(255, 255, 255, 0.12),
+        inset 0 -1px 0 rgba(0, 0, 0, 0.5) !important;
+}
+
+#dat-gui-container .dg.main.a > ul {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 12px !important;
+    margin: 0 !important;
+    padding: 18px 16px !important;
+    box-sizing: border-box !important;
+}
+
+#dat-gui-container .dg.main.a > ul > li.folder {
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+    background: transparent !important;
+}
+
+#dat-gui-container .dg.main.a > ul > li.folder > .dg,
+#dat-gui-container .dg.main.a > ul > li.folder > .dg > ul {
+    margin: 0 !important;
+    padding: 0 !important;
+}
+
+#dat-gui-container .dg.main.a > ul > li.folder > .dg > ul > li.title {
+    margin: 0 !important;
+    padding: 0 14px !important;
+    height: 45px !important;
+    line-height: 45px !important;
+    border-radius: 11px !important;
+    border: none !important;
+    background: #ffb900 !important;
+    color: #181818 !important;
+    font-family: 'Solway', serif !important;
+    font-size: 24px !important;
+    font-weight: 700 !important;
+    letter-spacing: 0.4px !important;
+    text-shadow: none !important;
+    box-shadow:
+        0 4px 0 rgba(120, 83, 0, 0.9),
+        0 10px 18px rgba(0, 0, 0, 0.28) !important;
+}
+
+/* Closed folders: keep only title row, no hidden rows affecting height */
+#dat-gui-container .dg.main.a > ul > li.folder > .dg > ul.closed > li:not(.title) {
+    display: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    height: 0 !important;
+    border: 0 !important;
+}
+
+/* Open folders: equal spacing between items */
+#dat-gui-container .dg.main.a > ul > li.folder > .dg > ul:not(.closed) > li:not(.title) {
+    margin: 8px 0 0 0 !important;
+}
+
+#dat-gui-container .dg.main.a > ul > li.folder > .dg > ul:not(.closed) > li.title + li {
+    margin-top: 12px !important;
+}
