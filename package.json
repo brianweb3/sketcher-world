@@ -14,8 +14,8 @@
   "main": "build/sketchbook.min.js",
   "types": "build/types/sketchbook.d.ts",
   "scripts": {
-    "dev": "webpack-dev-server --config webpack.dev.js",
-    "build": "webpack --config webpack.prod.js"
+    "dev": "NODE_OPTIONS=--openssl-legacy-provider webpack-dev-server --config webpack.dev.js",
+    "build": "NODE_OPTIONS=--openssl-legacy-provider webpack --config webpack.prod.js"
   },
   "repository": {
     "type": "git",
