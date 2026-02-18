@@ -15,7 +15,10 @@
   "types": "build/types/sketchbook.d.ts",
   "scripts": {
     "dev": "NODE_OPTIONS=--openssl-legacy-provider webpack-dev-server --config webpack.dev.js",
-    "build": "NODE_OPTIONS=--openssl-legacy-provider webpack --config webpack.prod.js"
+    "build": "NODE_OPTIONS=--openssl-legacy-provider webpack --config webpack.prod.js",
+    "build:webpack": "NODE_OPTIONS=--openssl-legacy-provider webpack --config webpack.prod.js",
+    "prepare:public": "rm -rf public && mkdir -p public && cp -R index.html build favicon.ico favicon.png favicon-source.png public/",
+    "vercel-build": "npm run build:webpack && npm run prepare:public"
   },
   "repository": {
     "type": "git",
